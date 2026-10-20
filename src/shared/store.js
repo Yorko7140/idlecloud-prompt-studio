@@ -129,7 +129,7 @@
       ? state.artists.filter(Boolean).map((a) => ({
           id: a.id || uid(),
           name: String(a.name || a.tags || '未命名'),
-          tags: String(a.tags || ''),
+          tags: Array.isArray(a.tags) ? a.tags.join(', ') : String(a.tags || ''),
           group: String(a.group || ''),
           note: String(a.note || ''),
           favorite: !!a.favorite,

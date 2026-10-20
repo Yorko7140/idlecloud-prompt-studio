@@ -78,6 +78,12 @@
           <label>LLM API Key
             <input id="llm-key" class="input" type="password" placeholder="sk-..." />
           </label>
+          <label>域名授权
+            <span class="row">
+              <button id="llm-grant" class="btn ghost" type="button">授权访问该域名</button>
+              <span id="llm-grant-hint" class="hint">跨域请求前需授权</span>
+            </span>
+          </label>
         </div>
         <div class="row end">
           <span id="save-hint" class="hint"></span>
@@ -103,6 +109,7 @@
     </dialog>
 
     <script src="../shared/store.js"></script>
+    <script src="../shared/perm.js"></script>
     <script src="../shared/toml.js"></script>
     <script src="options.js"></script>
   </body>

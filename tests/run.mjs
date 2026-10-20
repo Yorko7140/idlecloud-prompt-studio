@@ -257,7 +257,9 @@ async function main() {
     await evaluate(`(() => {
       const root = document.getElementById('idlecloud-prompt-studio-host').shadowRoot;
       const cards = [...root.querySelectorAll('.is-card')];
-      const btn = [...cards[0].querySelectorAll('button')].find((b) => b.textContent.includes('角色框'));
+      const btn = [...cards[0].querySelectorAll('button')].find(
+        (b) => (b.getAttribute('title') || b.textContent).includes('角色')
+      );
       btn.click();
       return true;
     })()`);
@@ -294,6 +296,11 @@ async function main() {
       const el = root.querySelector('input[placeholder="https://api.openai.com/v1"]');
       return el ? el.value : '';
     })()`);
+    const qualityFilled = await evaluate(`(() => {
+      const root = document.getElementById('idlecloud-prompt-studio-host').shadowRoot;
+      return [...root.querySelectorAll('textarea')].map((t) => t.value).find((v) => v.includes('best quality')) || '';
+    })()`);
+    check('设置页回填默认质量词', !!qualityFilled, qualityFilled.slice(0, 30));
     check('设置页保存 LLM 配置', String(savedBase).includes('127.0.0.1'), savedBase);
 
     // 8. AI 设计对话（真实走 background -> mock SSE -> 结构化方案）
@@ -427,6 +434,19 @@ async function main() {
         return false;
       })();
       check('工作台页面加载 store/toml', ready);
+      const renderedCards = await (async () => {
+        for (let i = 0; i < 20; i += 1) {
+          const n = await optEval(`document.querySelectorAll('#artist-list .item').length`).catch(() => 0);
+          if (n > 0) return n;
+          await new Promise((r) => setTimeout(r, 150));
+        }
+        return 0;
+      })();
+      check(
+        '工作台渲染画师串卡片',
+        renderedCards > 0,
+        `cards=${renderedCards} count=${await optEval(`document.getElementById('artist-count').textContent`)}`
+      );
       const sampleToml = [
         'schema_version = 1',
         '',

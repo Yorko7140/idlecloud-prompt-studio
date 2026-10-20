@@ -161,13 +161,15 @@
   }
 
   function textarea(value, opts = {}) {
-    return h('textarea', {
+    // textarea 的初值必须写到 value 属性上（子文本节点），否则只设 attribute 不会生效。
+    const el = h('textarea', {
       class: 'is-textarea',
       rows: opts.rows || 3,
       placeholder: opts.placeholder || '',
-      spellcheck: 'false',
-      value: value || ''
+      spellcheck: 'false'
     });
+    el.value = value == null ? '' : String(value);
+    return el;
   }
 
   Object.assign(NS, { h, icon, button, iconButton, toast, dialog, field, input, textarea, ICONS });

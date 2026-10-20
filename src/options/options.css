@@ -15,7 +15,7 @@ body {
   background: radial-gradient(1200px 600px at 15% -10%, #1c2440 0%, transparent 60%),
     radial-gradient(900px 500px at 100% 0%, #2a1b3d 0%, transparent 55%), var(--bg);
   color: var(--text);
-  font: 14px/1.6 "Inter", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  font: 14px/1.6 "Inter", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Noto Sans CJK SC", "WenQuanYi Micro Hei", system-ui, sans-serif;
   padding: 0 0 60px;
 }
 .topbar {

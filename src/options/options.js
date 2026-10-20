@@ -34,6 +34,12 @@ function bind() {
   $('import-toml').addEventListener('click', () => $('toml-file').click());
   $('toml-file').addEventListener('change', doImportToml);
   $('save').addEventListener('click', saveSettings);
+  $('llm-grant').addEventListener('click', async () => {
+    const url = $('llm-base').value.trim();
+    const ok = await globalThis.IdlePerm.request(url);
+    $('llm-grant-hint').textContent = ok ? '已授权，可直接请求' : '授权被拒绝或域名无效';
+    $('llm-grant-hint').style.color = ok ? 'var(--ok, #4ade80)' : 'var(--danger, #f87171)';
+  });
 
   $('editor-save').addEventListener('click', (e) => {
     e.preventDefault();
@@ -70,9 +76,13 @@ function render() {
   $('llm-key').value = s.llm.apiKey || '';
 }
 
+function tagText(item) {
+  return Array.isArray(item.tags) ? item.tags.join(', ') : String(item.tags || '');
+}
+
 function matches(item, q) {
   if (!q) return true;
-  return [item.name, item.group, item.note, item.prompt, item.avoid, ...(item.tags || [])]
+  return [item.name, item.group, item.note, item.prompt, item.avoid, tagText(item)]
     .filter(Boolean)
     .join(' ')
     .toLowerCase()
@@ -122,7 +132,7 @@ function card(item, kind) {
 
   const p = document.createElement('div');
   p.className = 'item-prompt';
-  p.textContent = item.prompt || item.avoid || '（空）';
+  p.textContent = item.prompt || item.avoid || tagText(item) || '（空）';
   el.appendChild(p);
 
   if (kind === 'character' && item.avoid) {
@@ -133,7 +143,12 @@ function card(item, kind) {
     el.appendChild(a);
   }
 
-  const tags = (item.tags || []).map((t) => '#' + t).join(' ');
+  const tags = tagText(item)
+    .split(/[,，]/)
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .map((t) => '#' + t)
+    .join(' ');
   if (tags || item.note) {
     const note = document.createElement('div');
     note.className = 'hint';
@@ -176,7 +191,7 @@ function openEditor(kind, item) {
   $('editor-title').textContent = (item ? '编辑' : '新增') + (kind === 'artist' ? '画师串' : '角色串');
   $('f-name').value = item ? item.name : '';
   $('f-group').value = item ? item.group || '' : '';
-  $('f-tags').value = item ? (item.tags || []).join(', ') : '';
+  $('f-tags').value = item ? tagText(item) : '';
   $('f-prompt').value = item ? item.prompt || '' : '';
   $('f-avoid').value = item ? item.avoid || '' : '';
   $('f-note').value = item ? item.note || '' : '';
@@ -195,10 +210,7 @@ async function commitEditor() {
   const data = {
     name,
     group: $('f-group').value.trim(),
-    tags: $('f-tags')
-      .value.split(/[,，]/)
-      .map((t) => t.trim())
-      .filter(Boolean),
+    tags: $('f-tags').value.trim(),
     prompt: $('f-prompt').value.trim(),
     avoid: kind === 'character' ? $('f-avoid').value.trim() : '',
     note: $('f-note').value.trim()
@@ -210,6 +222,9 @@ async function commitEditor() {
 
 // ------------------------------------------------------------------ settings
 async function saveSettings() {
+  // 必须在点击手势内先申请域名权限，再落盘
+  const baseUrl = $('llm-base').value.trim();
+  if (baseUrl) await globalThis.IdlePerm.request(baseUrl);
   await Store.patchSettings({
     fillMode: $('fill-mode').value,
     separator: $('separator').value || ', ',
@@ -218,7 +233,7 @@ async function saveSettings() {
       autoQuality: $('auto-quality').checked
     }),
     llm: Object.assign({}, state.settings.llm, {
-      baseUrl: $('llm-base').value.trim(),
+      baseUrl,
       model: $('llm-model').value.trim(),
       apiKey: $('llm-key').value.trim()
     })

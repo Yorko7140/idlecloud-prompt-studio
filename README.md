@@ -6,6 +6,22 @@
 - 不改动原插件源码，可独立安装、独立发布
 - 所有数据存在浏览器本地（`chrome.storage.local`），不上传服务器
 
+## 界面预览
+
+| 画师串库 | 角色串库 |
+| --- | --- |
+| ![画师串库](docs/screenshot-artists.png) | ![角色串库](docs/screenshot-characters.png) |
+
+| AI 设计对话 | 设置 |
+| --- | --- |
+| ![AI 设计](docs/screenshot-ai.png) | ![设置](docs/screenshot-settings.png) |
+
+![新增 / 编辑串](docs/screenshot-editor.png)
+
+独立的数据管理工作台（`chrome://extensions` → 扩展详情 → 扩展程序选项）：
+
+![管理工作台](docs/screenshot-options.png)
+
 ## 功能
 
 ### 1. 画师串库
@@ -71,6 +87,11 @@
 
 Base URL 只需要填到 `/v1` 这一层，扩展会自动补全接口路径。
 
+> **关于跨域授权**：扩展默认只申请 `nai.idlecloud.cc` 的权限。LLM 接口是第三方域名，
+> 首次使用前请到「扩展选项」页（`chrome://extensions` → 扩展详情 → 扩展程序选项）
+> 在「域名授权」处点一次 **授权访问该域名**，或直接点「保存设置」时按提示授权。
+> 这样扩展才能代你请求该 API；未授权时请求会被浏览器以 CORS 拦截。
+
 ## 目录结构
 
 ```
@@ -112,9 +133,9 @@ node tests/run.mjs
 node tests/real-site.mjs
 ```
 
-测试覆盖：content script 注入、绘图页自动展开、种子库、画师填充、去重、角色框填充、
-设置页保存、AI 对话（真实走 background → mock SSE）、方案「填入全部」、异形结构兜底、
-MaiBot TOML 导入、无未捕获异常。
+测试共 20 项，覆盖：content script 注入、绘图页自动展开、种子库、画师填充、去重、
+角色框填充、设置页保存与默认质量词、AI 对话（真实走 background → mock SSE）、方案「填入全部」、
+异形结构兜底、MaiBot TOML 导入、管理工作台渲染、无未捕获异常。
 
 依赖：Node ≥ 20（用到内置 `WebSocket`、`fetch`）、本机 Chromium（默认取 Playwright 缓存里的 chromium，可用 `CHROME_PATH` 覆盖）。
 

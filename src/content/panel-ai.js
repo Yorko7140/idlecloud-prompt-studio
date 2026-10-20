@@ -785,6 +785,18 @@
           this.settingsDraft = null;
           this.renderAll();
           this.showToast('设置已保存', 'success');
+          // 提示跨域授权状态：content script 不能直接申请权限，需到选项页授权
+          try {
+            const res = await chrome.runtime.sendMessage({
+              type: 'perm:contains',
+              url: d.llm.baseUrl
+            });
+            if (res && res.ok === false) {
+              this.showToast('该 API 域名尚未授权，前往扩展选项页点「授权访问该域名」', 'warn', 5200);
+            }
+          } catch (e) {
+            /* ignore */
+          }
         }
       })
     ]);

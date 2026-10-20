@@ -29,7 +29,7 @@
   inset: 0;
   z-index: 2147483000;
   pointer-events: none;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Noto Sans CJK SC", "Source Han Sans SC", "WenQuanYi Micro Hei", sans-serif;
   color: var(--text);
   font-size: 13px;
   line-height: 1.5;
@@ -180,11 +180,13 @@
 .is-card-meta { display: flex; gap: 6px; align-items: center; margin-top: 5px; color: #6f7a8f; font-size: 10px; }
 .is-badge { background: rgba(255,255,255,.06); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; font-size: 9.5px; color: #a4aec2; }
 .is-card-actions {
-  display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 6px 7px;
-  opacity: .62; transition: opacity .15s ease;
+  display: flex; flex-direction: row; align-items: center; gap: 1px; padding: 4px 6px;
+  opacity: .5; transition: opacity .15s ease;
 }
 .is-card:hover .is-card-actions { opacity: 1; }
-.is-card-actions .is-btn { padding: 3px 6px; font-size: 10.5px; border-radius: 6px; }
+.is-card-actions .is-btn { width: 26px; height: 26px; padding: 0; border-radius: 7px; color: #9aa6bd; }
+.is-card-actions .is-btn.is-soft { color: #cdd8ff; }
+.is-card-actions .is-btn svg { width: 14px; height: 14px; }
 .is-empty { padding: 36px 20px; text-align: center; color: var(--muted); font-size: 12px; }
 .is-empty strong { display: block; color: var(--text); font-size: 13px; margin-bottom: 4px; }
 .is-empty .is-btn { margin-top: 12px; }
@@ -221,7 +223,7 @@
 .is-field .is-input, .is-field .is-select { height: 32px; }
 
 .is-menu {
-  position: absolute; z-index: 50; min-width: 132px; padding: 4px;
+  position: absolute; z-index: 50; min-width: 150px; padding: 4px;
   pointer-events: auto;
   background: #1b2333; border: 1px solid var(--line2); border-radius: 10px;
   box-shadow: 0 12px 32px rgba(0,0,0,.55);
@@ -230,6 +232,7 @@
   display: flex; align-items: center; gap: 7px; width: 100%; text-align: left;
   border: 0; background: transparent; color: var(--text); font-size: 12px;
   padding: 6px 8px; border-radius: 7px; cursor: pointer;
+  white-space: nowrap;
 }
 .is-menu-item:hover { background: rgba(124,156,255,.14); }
 .is-menu-item.is-danger { color: #fca5a5; }
@@ -705,17 +708,16 @@
         ]
       );
       const actions = h('div', { class: 'is-card-actions' }, [
-        button('填入', {
-          variant: 'soft',
-          className: 'is-sm',
+        iconButton('plus', {
+          className: 'is-soft',
+          title: '填入正向提示词',
           onClick: (e) => {
             e.stopPropagation();
             this.fillArtist(item, this.state.settings.fillMode, 'positive');
           }
         }),
-        button('复制', {
-          variant: 'ghost',
-          className: 'is-sm',
+        iconButton('copy', {
+          title: '复制画师串',
           onClick: async (e) => {
             e.stopPropagation();
             const ok = await Adapter.copyText(item.tags);
@@ -761,17 +763,16 @@
         ]
       );
       const actions = h('div', { class: 'is-card-actions' }, [
-        button('角色框', {
-          variant: 'soft',
-          className: 'is-sm',
+        iconButton('plus', {
+          className: 'is-soft',
+          title: '填入角色描述框',
           onClick: (e) => {
             e.stopPropagation();
             this.fillCharacter(item, this.state.settings.fillMode, 'character');
           }
         }),
-        button('复制', {
-          variant: 'ghost',
-          className: 'is-sm',
+        iconButton('copy', {
+          title: '复制角色串',
           onClick: async (e) => {
             e.stopPropagation();
             const ok = await Adapter.copyText(item.prompt);

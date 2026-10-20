@@ -170,7 +170,9 @@ async function runRequest(port, requestId, payload, outerSignal) {
       err.name = 'TimeoutError';
       throw err;
     }
-    throw new Error('网络请求失败：' + (e.message || e));
+    throw new Error(
+      '网络请求失败：' + (e.message || e) + '（若是跨域被拦截，请在扩展选项页点「授权访问该域名」）'
+    );
   }
 
   if (!resp.ok) {
@@ -293,6 +295,22 @@ function httpError(status, body) {
 }
 
 // 测试连接：非流式，取极小响应
+// 查询某个 Base URL 是否已获得 host 权限（content script 无法直接调 permissions API）
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (!msg || msg.type !== 'perm:contains') return;
+  (async () => {
+    try {
+      const u = new URL(String(msg.url || ''));
+      const pattern = `${u.protocol}//${u.host}/*`;
+      const ok = await chrome.permissions.contains({ origins: [pattern] });
+      sendResponse({ ok, pattern });
+    } catch (e) {
+      sendResponse({ ok: false, error: String(e && e.message) });
+    }
+  })();
+  return true;
+});
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!msg || msg.type !== 'llm:test') return;
   (async () => {

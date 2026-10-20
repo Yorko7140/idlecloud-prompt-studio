@@ -4,8 +4,14 @@
   "version": "0.1.0",
   "description": "为 nai.idlecloud.cc 提供画师串/角色串收藏与一键填充，并内置 LLM 对话式提示词设计。",
   "minimum_chrome_version": "116",
-  "permissions": ["storage", "unlimitedStorage", "activeTab"],
-  "host_permissions": ["https://nai.idlecloud.cc/*"],
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://nai.idlecloud.cc/*"
+  ],
   "background": {
     "service_worker": "src/background.js",
     "type": "module"
@@ -19,10 +25,13 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://nai.idlecloud.cc/*"],
+      "matches": [
+        "https://nai.idlecloud.cc/*"
+      ],
       "js": [
         "src/shared/store.js",
         "src/shared/toml.js",
+        "src/shared/perm.js",
         "src/content/ui.js",
         "src/content/adapter.js",
         "src/content/promptlib.js",
@@ -30,13 +39,17 @@
         "src/content/panel-ai.js",
         "src/content/main.js"
       ],
-      "css": ["src/content/style.css"],
+      "css": [
+        "src/content/style.css"
+      ],
       "run_at": "document_idle"
     }
   ],
   "commands": {
     "toggle-panel": {
-      "suggested_key": { "default": "Alt+Shift+N" },
+      "suggested_key": {
+        "default": "Alt+Shift+N"
+      },
       "description": "显示 / 隐藏提示词工坊面板"
     }
   },
@@ -44,5 +57,9 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  }
+  },
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ]
 }
