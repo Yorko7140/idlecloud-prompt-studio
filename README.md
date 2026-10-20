@@ -140,6 +140,9 @@ node tests/run.mjs
 
 # 只验证真实站点注入（不需要登录）
 node tests/real-site.mjs
+
+# 登录态下的真实站点全流程验证（自己提供 session cookie，脚本不含凭据）
+SESSION='<api.idlecloud.cc 的 session cookie>' node tests/real-e2e.mjs
 ```
 
 测试共 24 项，覆盖：content script 注入、绘图页自动展开、种子库、画师填充、去重、
