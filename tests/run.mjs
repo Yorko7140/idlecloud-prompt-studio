@@ -303,6 +303,44 @@ async function main() {
     check('设置页回填默认质量词', !!qualityFilled, qualityFilled.slice(0, 30));
     check('设置页保存 LLM 配置', String(savedBase).includes('127.0.0.1'), savedBase);
 
+    // 7.5 管理工作台入口：content script 没有 openOptionsPage，必须经 background 打开标签页
+    const optionsTabs = async () =>
+      (await waitJson('http://127.0.0.1:9223/json/list')).filter((t) => t.url.includes('/src/options/options.html'));
+    const beforeOptions = (await optionsTabs()).length;
+    await evaluate(`(() => {
+      const root = document.getElementById('idlecloud-prompt-studio-host').shadowRoot;
+      root.querySelectorAll('.is-head-actions .is-btn')[0].click();
+      return true;
+    })()`);
+    await new Promise((r) => setTimeout(r, 1500));
+    const afterOptions = await optionsTabs();
+    check('齿轮 -> 打开管理工作台标签页', afterOptions.length === beforeOptions + 1, `tabs=${afterOptions.length}`);
+    const optionsBadToast = await evaluate(`(() => {
+      const root = document.getElementById('idlecloud-prompt-studio-host').shadowRoot;
+      return root.querySelector('.is-toast.is-error')?.textContent || '';
+    })()`);
+    check('打开管理页时不再弹错误提示', !optionsBadToast.includes('无法打开管理页'), optionsBadToast || '(no toast)');
+    if (afterOptions.length) {
+      const optSession = await cdp.send('Target.attachToTarget', { targetId: afterOptions[0].id, flatten: true });
+      await cdp.send('Runtime.enable', {}, optSession.sessionId);
+      const rendered = (await cdp.send(
+        'Runtime.evaluate',
+        { expression: `({ title: document.title, cards: document.querySelectorAll('#artist-list > *').length })`, returnByValue: true },
+        optSession.sessionId
+      )).result.value;
+      check('管理页正常渲染画师库', rendered.cards >= 10, JSON.stringify(rendered));
+      await cdp.send('Target.detachFromTarget', { sessionId: optSession.sessionId });
+    }
+    // 重复点击应复用同一个标签页，不重复新建
+    await evaluate(`(() => {
+      const root = document.getElementById('idlecloud-prompt-studio-host').shadowRoot;
+      root.querySelectorAll('.is-head-actions .is-btn')[0].click();
+      return true;
+    })()`);
+    await new Promise((r) => setTimeout(r, 1500));
+    const reused = (await optionsTabs()).length;
+    check('重复点齿轮复用同一管理页标签', reused === afterOptions.length, `tabs=${reused}`);
+
     // 8. AI 设计对话（真实走 background -> mock SSE -> 结构化方案）
     await evaluate(`(() => {
       const root = document.getElementById('idlecloud-prompt-studio-host').shadowRoot;

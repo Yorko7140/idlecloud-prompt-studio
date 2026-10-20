@@ -311,6 +311,81 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   return true;
 });
 
+// 打开管理工作台：content script 里没有 chrome.runtime.openOptionsPage / chrome.tabs，
+// 必须交给 service worker 打开（否则点“管理工作台”只会弹“无法打开管理页”）。
+const OPTIONS_PATH = 'src/options/options.html';
+let lastOptionsError = null;
+
+// 找到已经打开的管理工作台标签页。
+// 注意：没有 "tabs" 权限时 tab.url 往往是 null（Edge 上尤其明显），所以优先用
+// runtime.getContexts()（按 documentUrl 查询扩展自己的页面上下文，能直接拿到 tabId/windowId）。
+async function findOptionsContext(baseUrl) {
+  try {
+    if (chrome.runtime.getContexts) {
+      const list = await chrome.runtime.getContexts({ contextTypes: ['TAB'], documentUrls: [baseUrl] });
+      if (list && list.length) return { tabId: list[0].tabId, windowId: list[0].windowId };
+    }
+  } catch (e) {
+    /* 老版本浏览器不支持时继续用 tabs 兜底 */
+  }
+  try {
+    const tabs = await chrome.tabs.query({});
+    const hit = (tabs || []).find(
+      (t) => typeof t.id === 'number' && typeof t.url === 'string' && t.url.split('?')[0].split('#')[0] === baseUrl
+    );
+    return hit ? { tabId: hit.id, windowId: hit.windowId } : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function openOptionsTab() {
+  const url = chrome.runtime.getURL(OPTIONS_PATH);
+  const existing = await findOptionsContext(url);
+  if (existing) {
+    try {
+      await chrome.tabs.update(existing.tabId, { active: true });
+      if (existing.windowId != null) await chrome.windows.update(existing.windowId, { focused: true });
+      return { ok: true, reused: true };
+    } catch (e) {
+      /* 复用失败则继续尝试其它方式 */
+    }
+  }
+  try {
+    await chrome.runtime.openOptionsPage();
+    return { ok: true, via: 'openOptionsPage' };
+  } catch (e) {
+    /* 回落到新建标签页 */
+  }
+  const tab = await chrome.tabs.create({ url });
+  return { ok: true, tabId: tab && tab.id };
+}
+
+// 先同步回执、再做打开动作：Edge 在打开新标签页时会提前关闭消息端口，
+// 若把 sendResponse 放在 await 之后，content script 只会拿到
+// “The message port closed before a response was received”。
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (!msg) return;
+  if (msg.type === 'ui:open-options') {
+    sendResponse({ ok: true, accepted: true });
+    openOptionsTab()
+      .then((res) => {
+        lastOptionsError = res && res.ok === false ? res.error || '未知错误' : null;
+      })
+      .catch((e) => {
+        lastOptionsError = String((e && e.message) || e);
+      });
+    return true;
+  }
+  if (msg.type === 'ui:options-state') {
+    const url = chrome.runtime.getURL(OPTIONS_PATH);
+    findOptionsContext(url)
+      .then((ctx) => sendResponse({ ok: true, open: !!ctx, tabId: ctx && ctx.tabId, error: lastOptionsError }))
+      .catch((e) => sendResponse({ ok: false, error: String((e && e.message) || e) }));
+    return true;
+  }
+});
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!msg || msg.type !== 'llm:test') return;
   (async () => {

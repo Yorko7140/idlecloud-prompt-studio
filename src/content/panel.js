@@ -551,13 +551,7 @@
         h('div', { class: 'is-head-actions' }, [
           iconButton('settings', {
             title: '管理工作台',
-            onClick: () => {
-              try {
-                chrome.runtime.openOptionsPage();
-              } catch (e) {
-                this.showToast('无法打开管理页', 'error');
-              }
-            }
+            onClick: () => this.openOptions()
           }),
           iconButton('chevron', {
             title: '收起 / 展开',
@@ -1021,6 +1015,32 @@
 
     showToast(message, type = 'info') {
       toast(this.toastWrap, message, type);
+    }
+
+    // 内容脚本里没有 chrome.runtime.openOptionsPage / chrome.tabs，交给 background 打开。
+    // 回执可能因浏览器提前关闭消息端口而丢失（Edge 上打开新标签页时会这样），
+    // 所以发完命令后统一再问一次“管理页是否真的打开了”，以实际状态为准。
+    openOptions() {
+      const fail = () => this.showToast('无法打开管理页，请到扩展详情页点“扩展程序选项”', 'error');
+      const verify = () => {
+        try {
+          chrome.runtime.sendMessage({ type: 'ui:options-state' }, (res) => {
+            if (chrome.runtime.lastError || !res) return fail();
+            if (res.open) this.showToast('已打开管理工作台');
+            else fail();
+          });
+        } catch (e) {
+          fail();
+        }
+      };
+      try {
+        chrome.runtime.sendMessage({ type: 'ui:open-options' }, (res) => {
+          if (res && res.ok === false) fail();
+        });
+        setTimeout(verify, 900);
+      } catch (e) {
+        fail();
+      }
     }
 
     showTip(message) {

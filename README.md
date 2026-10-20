@@ -145,10 +145,10 @@ node tests/real-site.mjs
 SESSION='<api.idlecloud.cc 的 session cookie>' node tests/real-e2e.mjs
 ```
 
-测试共 24 项，覆盖：content script 注入、绘图页自动展开、种子库、画师填充、去重、
+测试共 28 项，覆盖：content script 注入、绘图页自动展开、种子库、画师填充、去重、
 角色框填充、折叠角色区（复刻真实站点：自动展开 + 自动新建角色）、设置页保存与默认质量词、
 AI 对话（真实走 background → mock SSE）、方案「填入全部」、异形结构兜底、MaiBot TOML 导入、
-管理工作台渲染、无未捕获异常。
+管理工作台打开与复用（齿轮 → 新标签渲染、重复点击不刷屏）、无未捕获异常。
 
 真实站点的端到端验证（登录态，脚本不入库）：画师串→正向、菜单→负面、角色卡→折叠角色框、
 AI 设计→方案→「填入全部」、面板拖动与默认位置，10/10 通过。
@@ -161,6 +161,8 @@ AI 设计→方案→「填入全部」、面板拖动与默认位置，10/10 �
 - 站点带 devtools 反调试：打开 F12 会被重定向到 `/404`（与本扩展无关）。需要在控制台调试时先执行 `window.disableAntiDebug()` 再刷新。
 - 站点把文案打包进 JS chunk，没有稳定的 i18n JSON，所以本扩展只在「添加角色」按钮这类必须靠文案识别的场景使用多语言正则。
 - LLM 的 Key 存在浏览器本地（`chrome.storage.local`），仅用于你自己配置的服务；扩展本身不收集任何数据。
+- 内容脚本里没有 `chrome.runtime.openOptionsPage` / `chrome.tabs`，所以「管理工作台」是发给 service worker 打开的（v0.1.2 之前点齿轮只会提示“无法打开管理页”）。Edge 上打开新标签页时会提前关闭消息端口，因此后台先回执再执行，面板随后用 `ui:options-state` 复核真实状态。
+- 以「加载已解压的扩展程序」方式安装时，替换目录里的文件后需要在 `edge://extensions` / `chrome://extensions` 点一次「刷新」，否则浏览器仍在跑旧代码。
 
 ## 路线图
 

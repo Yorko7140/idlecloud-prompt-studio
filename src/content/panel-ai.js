@@ -707,7 +707,7 @@
             icon: 'external',
             variant: 'ghost',
             className: 'is-sm',
-            onClick: () => chrome.runtime.openOptionsPage()
+            onClick: () => this.openOptions()
           }),
           button('清空库', {
             icon: 'trash',

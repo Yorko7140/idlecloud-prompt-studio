@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "IdleCloud 提示词工坊",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "为 nai.idlecloud.cc 提供画师串/角色串收藏与一键填充，并内置 LLM 对话式提示词设计。",
   "minimum_chrome_version": "116",
   "permissions": [
