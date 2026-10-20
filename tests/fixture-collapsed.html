@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fixture · 折叠角色区（真实站点结构）</title>
+    <style>
+      body { margin: 0; font: 14px/1.5 system-ui, sans-serif; background: #11151d; color: #e6ebf5; }
+      .app { display: grid; grid-template-columns: 1fr 380px; height: 100vh; }
+      .left { padding: 16px; }
+      .right { border-left: 1px solid #2a3140; padding: 16px; overflow: auto; }
+      .tabs { display: flex; gap: 4px; margin-bottom: 6px; }
+      .tabs [role='tab'] { background: #1c2230; border: 1px solid #2a3140; color: #9aa6ba; padding: 5px 12px; border-radius: 6px; cursor: pointer; }
+      .tabs [role='tab'][aria-selected='true'] { background: #2a3a63; color: #fff; }
+      .prompt-editor-input textarea { width: 100%; min-height: 120px; background: #0d1118; color: #e6ebf5; border: 1px solid #2a3140; border-radius: 8px; padding: 8px; }
+      .ghost { height: 1px; width: 1px; opacity: 0; position: absolute; }
+      .character { border: 1px solid #2a3140; border-radius: 10px; margin-bottom: 10px; }
+      .char-head { display: flex; justify-content: space-between; padding: 8px 10px; }
+      .char-body { padding: 0 10px 10px; display: flex; flex-direction: column; gap: 6px; }
+      .MuiFormControl-root { display: flex; flex-direction: column; gap: 4px; }
+      .MuiFormControl-root label { font-size: 12px; color: #9aa6ba; }
+      .MuiFormControl-root textarea { width: 100%; min-height: 70px; background: #0d1118; color: #e6ebf5; border: 1px solid #2a3140; border-radius: 8px; padding: 8px; }
+      button.plain { background: #2a3a63; color: #fff; border: 0; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+      .hint { color: #7b8698; font-size: 12px; }
+      .ctrl { display: flex; align-items: center; gap: 8px; background: none; border: 0; color: #cfd8ea; font: inherit; cursor: pointer; padding: 6px 0; }
+      .ctrl .cnt { color: #7b8698; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <div class="left">
+        <div class="hint">复刻真实站点：角色区默认折叠（role=region 内容仍在，但不可见），编辑器内含只读影子 textarea</div>
+        <section aria-label="Prompt" id="prompt-panel">
+          <div class="tabs" role="tablist">
+            <button role="tab" aria-selected="true" data-kind="positive" id="tab-positive">Positive</button>
+            <button role="tab" aria-selected="false" data-kind="negative" id="tab-negative">Negative</button>
+            <button role="tab" aria-selected="false" data-kind="translate" id="tab-translate">Translate</button>
+          </div>
+          <div class="prompt-editor-input" data-kind="positive">
+            <textarea id="prompt-positive" placeholder="Describe the image you want to generate…"></textarea>
+            <textarea class="ghost" readonly tabindex="-1">x</textarea>
+            <div class="prompt-editor-actions">
+              <button aria-label="Expand positive-prompt editor">⤢</button>
+              <button aria-label="Copy positive prompt">⧉</button>
+            </div>
+          </div>
+        </section>
+      </div>
+      <div class="right" id="parameters">
+        <div class="hint">参数</div>
+        <button class="ctrl" id="char-toggle" aria-expanded="false">
+          <span>Character control</span>
+          <span class="cnt" id="char-count">0 configured · 0 enabled</span>
+        </button>
+        <div role="region" id="char-region" aria-labelledby="char-toggle" style="display: none">
+          <div>
+            <button class="plain" id="add-character" type="button"><span>Add character</span></button>
+            <div role="group" aria-label="Character position mode">
+              <button type="button" value="ai">Let AI decide position</button>
+              <button type="button" value="custom">Custom position</button>
+            </div>
+          </div>
+          <div id="characters">
+            <p id="char-empty">No characters added yet</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // 正负提示词是同一组 tab 的互斥面板（真实站点行为）
+      const state = { positive: '', negative: '', translate: '' };
+      document.querySelectorAll('#prompt-panel [role="tab"]').forEach((tab) => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('#prompt-panel [role="tab"]').forEach((t) => {
+            t.setAttribute('aria-selected', String(t === tab));
+          });
+        });
+      });
+      document.getElementById('prompt-positive').addEventListener('input', (e) => (state.positive = e.target.value));
+
+      const toggle = document.getElementById('char-toggle');
+      const region = document.getElementById('char-region');
+      toggle.addEventListener('click', () => {
+        const open = toggle.getAttribute('aria-expanded') === 'true';
+        toggle.setAttribute('aria-expanded', String(!open));
+        region.style.display = open ? 'none' : '';
+      });
+
+      let seq = 0;
+      function addCharacter() {
+        seq += 1;
+        document.getElementById('char-empty')?.remove();
+        const name = 'Character ' + seq;
+        const data = { prompt: '', avoid: '', tab: 'prompt' };
+        const wrap = document.createElement('div');
+        wrap.className = 'character';
+        wrap.innerHTML = `
+          <div class="char-head"><span>${name}</span></div>
+          <div class="char-body">
+            <div class="tabs" role="tablist">
+              <button role="tab" aria-selected="true" data-t="prompt">Character Prompt</button>
+              <button role="tab" aria-selected="false" data-t="avoid">Character Avoid</button>
+            </div>
+            <div class="MuiFormControl-root">
+              <label>${name}</label>
+              <textarea data-role="char" placeholder="character description"></textarea>
+            </div>
+          </div>`;
+        const ta = wrap.querySelector('textarea');
+        const tabs = wrap.querySelectorAll('[role="tab"]');
+        const sync = () => (ta.value = data[data.tab]);
+        tabs.forEach((tab) => {
+          tab.addEventListener('click', () => {
+            data[data.tab] = ta.value;
+            data.tab = tab.dataset.t;
+            tabs.forEach((t) => t.setAttribute('aria-selected', String(t === tab)));
+            sync();
+          });
+        });
+        ta.addEventListener('input', () => (data[data.tab] = ta.value));
+        document.getElementById('characters').appendChild(wrap);
+        document.getElementById('char-count').textContent = `${seq} configured · ${seq} enabled`;
+      }
+      document.getElementById('add-character').addEventListener('click', addCharacter);
+      window.__fixture = { state, addCharacter };
+    </script>
+  </body>
+</html>

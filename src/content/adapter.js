@@ -191,19 +191,42 @@
     );
   }
 
-  function findAddCharacterButton() {
+  function findAddCharacterButton(includeHidden) {
     const re =
       /add character|add a character|添加角色|添加人物|新增角色|キャラクター(を)?追加|캐릭터\s*추가/i;
-    const buttons = Array.from(document.querySelectorAll('button'));
-    return (
-      buttons.find(
-        (b) =>
-          isVisible(b) &&
-          !b.disabled &&
-          re.test((b.textContent || '').trim()) &&
-          !b.closest('[role="dialog"]')
-      ) || null
+    const buttons = Array.from(document.querySelectorAll('button')).filter(
+      (b) =>
+        !b.disabled &&
+        re.test((b.textContent || '').trim()) &&
+        !b.closest('[role="dialog"]')
     );
+    // 角色区默认是折叠的：内容仍在 DOM 里但不可见，此时点名要它也能拿到。
+    return buttons.find(isVisible) || (includeHidden ? buttons[0] : null) || null;
+  }
+
+  // 「Character control」折叠开关（真实站点：button[aria-expanded] 内含该文案，无 aria-label）
+  function characterControlToggle() {
+    const list = Array.from(document.querySelectorAll('button[aria-expanded]')).filter(
+      (b) => !b.closest('[role="dialog"]') && /character|角色|人物|キャラ/i.test(b.textContent || '')
+    );
+    return list.find((b) => b.getAttribute('aria-expanded') === 'false') || list[0] || null;
+  }
+
+  // 展开角色区 → 若还没有角色输入框，则点「Add character」新建一个
+  async function ensureCharacterSlot() {
+    if (characterTextarea()) return true;
+    const toggle = characterControlToggle();
+    if (toggle && toggle.getAttribute('aria-expanded') === 'false') {
+      toggle.click();
+      await sleep(240);
+    }
+    if (characterTextarea()) return true;
+    let add = findAddCharacterButton(true);
+    if (add) {
+      add.click();
+      await sleep(360);
+    }
+    return !!characterTextarea();
   }
 
   // 角色区通常紧邻「添加角色」按钮；据此收窄搜索范围，避免误填其它备注框。
@@ -295,17 +318,8 @@
     let el = characterTextarea();
     if (!el && !promptSection()) el = focusedTextarea();
     if (!el) {
-      expandFirstCharacterPanel();
-      await sleep(150);
+      await ensureCharacterSlot();
       el = characterTextarea();
-    }
-    if (!el) {
-      const add = findAddCharacterButton();
-      if (add) {
-        add.click();
-        await sleep(250);
-        el = characterTextarea();
-      }
     }
     if (!el) {
       return {
@@ -354,18 +368,15 @@
       let tas = characterTextareas();
       if (!tas[i]) {
         if (i === 0 && !tas.length) {
-          expandFirstCharacterPanel();
-          await sleep(160);
-          tas = characterTextareas();
+          await ensureCharacterSlot();
+        } else if (!tas[i]) {
+          const add = findAddCharacterButton(true);
+          if (add) {
+            add.click();
+            await sleep(320);
+          }
         }
-      }
-      if (!tas[i]) {
-        const add = findAddCharacterButton();
-        if (add) {
-          add.click();
-          await sleep(280);
-          tas = characterTextareas();
-        }
+        tas = characterTextareas();
       }
       let el = tas[i];
       if (!el) {
@@ -409,8 +420,12 @@
       activeTextarea: ta ? { placeholder: String(ta.getAttribute('placeholder') || '').slice(0, 40), value: String(ta.value || '').slice(0, 60) } : null,
       characterFields: chars,
       addCharacterButton: (() => {
-        const b = findAddCharacterButton();
+        const b = findAddCharacterButton(true);
         return b ? (b.textContent || '').trim().slice(0, 30) : null;
+      })(),
+      characterControl: (() => {
+        const t = characterControlToggle();
+        return t ? { text: (t.textContent || '').trim().slice(0, 30), expanded: t.getAttribute('aria-expanded') } : null;
       })()
     };
   }
@@ -459,6 +474,8 @@
     diagnose,
     waitForApp,
     findAddCharacterButton,
+    characterControlToggle,
+    ensureCharacterSlot,
     characterTextareas
   });
 })();

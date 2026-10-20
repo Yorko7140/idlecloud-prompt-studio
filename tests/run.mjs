@@ -405,6 +405,71 @@ async function main() {
     check('结构不匹配时回退到最后聚焦的输入框', !!altFilled, String(altFilled).slice(0, 40));
     await cdp.send('Target.closeTarget', { targetId: altTarget });
 
+    // 9.6 折叠角色区（复刻真实站点）：点角色卡应自动展开 Character control 并新建角色，再填入
+    const { targetId: colTarget } = await cdp.send('Target.createTarget', {
+      url: `http://127.0.0.1:${FIXTURE_PORT}/fixture-collapsed.html`
+    });
+    const { sessionId: colSession } = await cdp.send('Target.attachToTarget', {
+      targetId: colTarget,
+      flatten: true
+    });
+    await cdp.send('Runtime.enable', {}, colSession);
+    const colEval = async (expr) => {
+      const res = await cdp.send(
+        'Runtime.evaluate',
+        { expression: expr, awaitPromise: true, returnByValue: true, userGesture: true },
+        colSession
+      );
+      if (res.exceptionDetails) throw new Error(JSON.stringify(res.exceptionDetails));
+      return res.result.value;
+    };
+    const colWait = async (expr, timeoutMs = 12000) => {
+      const started = Date.now();
+      for (;;) {
+        const v = await colEval(expr).catch(() => false);
+        if (v) return v;
+        if (Date.now() - started > timeoutMs) return null;
+        await new Promise((r) => setTimeout(r, 150));
+      }
+    };
+    const colMounted = await colWait(
+      `!!document.getElementById('idlecloud-prompt-studio-host')?.shadowRoot?.querySelector('.is-panel')`
+    );
+    check('折叠角色区 fixtures 注入', !!colMounted);
+    await colWait(
+      `document.getElementById('idlecloud-prompt-studio-host').shadowRoot.querySelector('.is-panel').classList.contains('is-open')`
+    );
+    await colEval(`(() => {
+      const root = document.getElementById('idlecloud-prompt-studio-host').shadowRoot;
+      const tab = [...root.querySelectorAll('.is-tab')].find((t) => t.textContent.includes('角色'));
+      tab.click();
+      return true;
+    })()`);
+    await colEval(`(() => {
+      const root = document.getElementById('idlecloud-prompt-studio-host').shadowRoot;
+      root.querySelector('.is-card-main').click();
+      return true;
+    })()`);
+    const colFilled = await colWait(
+      `(() => {
+        const el = document.querySelector('#characters textarea');
+        return el && el.value.includes('1girl') ? el.value : '';
+      })()`,
+      8000
+    );
+    check(
+      '折叠角色区：自动展开并新建角色后填入',
+      !!colFilled,
+      String(colFilled).slice(0, 50)
+    );
+    const colExpanded = await colEval(
+      `document.getElementById('char-toggle').getAttribute('aria-expanded')`
+    );
+    check('折叠角色区：Character control 已展开', colExpanded === 'true', String(colExpanded));
+    const colCount = await colEval(`document.querySelectorAll('#characters .character').length`);
+    check('折叠角色区：只新增一个角色槽', colCount === 1, `count=${colCount}`);
+    await cdp.send('Target.closeTarget', { targetId: colTarget });
+
     // 10. MaiBot TOML 导入（在工作台页面的主世界直接跑导入管线）
     const targets = await waitJson('http://127.0.0.1:9223/json/list');
     const sw = targets.find((t) => t.type === 'service_worker' && t.url.includes('chrome-extension://'));

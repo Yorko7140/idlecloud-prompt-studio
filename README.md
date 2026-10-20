@@ -22,11 +22,20 @@
 
 ![管理工作台](docs/screenshot-options.png)
 
+**真实站点实测**（登录状态下打开 /main，面板默认停在右侧提示词栏左边，不遮挡输入框）：
+
+![真实站点-画师与 AI 方案](docs/screenshot-real-main.png)
+
+角色串会自动展开站点折叠的 `Character control` 并新建角色卡，再写入「Character prompt」：
+
+![真实站点-角色串](docs/screenshot-real-character.png)
+
 ## 功能
 
 ### 1. 画师串库
 
 - 保存画师串：名称、标签串（如 `artist:wlop`）、分组、备注、收藏
+- 面板可拖动：按住标题栏拖到任意位置，位置会记住；双击标题栏回到默认位置（提示词栏左侧）
 - 一键填入正向提示词框；`Alt + 点击` 覆盖填入；卡片菜单可填到负面提示词
 - 追加模式自动去重（同一画师串不会重复写进提示词）
 - 搜索、按分组筛选、按使用次数/名称排序
@@ -111,11 +120,11 @@ tests/                        端到端测试（真实 Chromium + mock LLM）
 
 ### 与站点的对接方式
 
-站点的提示词编辑器结构（从线上 bundle 反推）：
+站点的提示词编辑器结构（bundle 反推 + 登录后实测确认）：
 
-- 编辑器容器：`.prompt-editor-input`，内层 `textarea`
-- 正向 / 负向是同一个面板的两个 MUI Tab（`[role="tab"]`，索引 0 = 正向，1 = 负向）
-- 角色描述：参数区每个角色一个 MUI `TextField`（multiline），紧邻「Add Character」按钮
+- 编辑器容器：`.prompt-editor-input`，内层 `textarea[aria-label]` 是真正可写的输入框，旁边还有一个只读的影子 `textarea`（MUI TextareaAutosize 用来量高度），填充时只认前者
+- 正向 / 负向 / 翻译是同一个面板的三个 MUI Tab（`[role="tab"]`，0 = Positive、1 = Negative、2 = Translate）；切换 Tab 时 React 复用同一个 textarea，只替换 value 与 placeholder
+- 角色区默认折叠：`button[aria-expanded]`（文案 `Character control`）控制 `div[role="region"]`，折叠时内容仍在 DOM 里但不可见；展开后 `button` 文案 `Add character` 新增角色，每个角色一张卡（`Character prompt` / `Character exclusions` 两个 Tab + 一个 MUI multiline `TextField`）
 
 `adapter.js` 按结构选择器定位，不依赖界面文案；同时保留三级兜底：
 
@@ -133,15 +142,20 @@ node tests/run.mjs
 node tests/real-site.mjs
 ```
 
-测试共 20 项，覆盖：content script 注入、绘图页自动展开、种子库、画师填充、去重、
-角色框填充、设置页保存与默认质量词、AI 对话（真实走 background → mock SSE）、方案「填入全部」、
-异形结构兜底、MaiBot TOML 导入、管理工作台渲染、无未捕获异常。
+测试共 24 项，覆盖：content script 注入、绘图页自动展开、种子库、画师填充、去重、
+角色框填充、折叠角色区（复刻真实站点：自动展开 + 自动新建角色）、设置页保存与默认质量词、
+AI 对话（真实走 background → mock SSE）、方案「填入全部」、异形结构兜底、MaiBot TOML 导入、
+管理工作台渲染、无未捕获异常。
+
+真实站点的端到端验证（登录态，脚本不入库）：画师串→正向、菜单→负面、角色卡→折叠角色框、
+AI 设计→方案→「填入全部」、面板拖动与默认位置，10/10 通过。
 
 依赖：Node ≥ 20（用到内置 `WebSocket`、`fetch`）、本机 Chromium（默认取 Playwright 缓存里的 chromium，可用 `CHROME_PATH` 覆盖）。
 
 ## 已知限制
 
-- 站点的 `/main` 需要登录，开发阶段无法直接读取登录后的真实 DOM；对接层基于线上 bundle 的组件结构推断，并做了多级兜底。如果填入失败，请用「检测绘图页结构」导出诊断信息。
+- 站点的 `/main` 需要登录；对接层已用登录态实测（2026-10），但站点改版仍可能让选择器失效。如果填入失败，请用「检测绘图页结构」导出诊断信息。
+- 站点带 devtools 反调试：打开 F12 会被重定向到 `/404`（与本扩展无关）。需要在控制台调试时先执行 `window.disableAntiDebug()` 再刷新。
 - 站点把文案打包进 JS chunk，没有稳定的 i18n JSON，所以本扩展只在「添加角色」按钮这类必须靠文案识别的场景使用多语言正则。
 - LLM 的 Key 存在浏览器本地（`chrome.storage.local`），仅用于你自己配置的服务；扩展本身不收集任何数据。
 

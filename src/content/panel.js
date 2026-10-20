@@ -51,7 +51,7 @@
 .is-launcher svg { width: 26px; height: 26px; }
 
 .is-panel {
-  position: fixed; top: 16px; right: 16px;
+  position: fixed; top: 16px; left: 16px;
   width: 414px; max-width: calc(100vw - 24px);
   height: calc(100vh - 32px); max-height: 940px;
   display: flex; flex-direction: column;
@@ -70,8 +70,10 @@
 .is-panel.is-min { height: 58px; }
 .is-panel.is-min .is-tabs, .is-panel.is-min .is-body { display: none; }
 
+.is-head.is-dragging { cursor: grabbing; }
 .is-head {
   display: flex; align-items: center; gap: 10px;
+  cursor: grab; touch-action: none;
   padding: 12px 12px 10px; border-bottom: 1px solid var(--line);
   background: linear-gradient(180deg, rgba(124,156,255,.08), transparent);
 }
@@ -423,6 +425,8 @@
       panel.addEventListener('keydown', (e) => e.stopPropagation());
       this.renderAll();
       this.applyOpen();
+      this.applyPanelPosition();
+      window.addEventListener('resize', () => this.applyPanelPosition());
     }
 
     renderAll() {
@@ -444,6 +448,57 @@
       if (this.state.tab === 'ai') body.appendChild(this.renderAI());
       else if (this.state.tab === 'settings') body.appendChild(this.renderSettings());
       else body.appendChild(this.state.tab === 'characters' ? this.renderCharacters() : this.renderArtists());
+    }
+
+    applyPanelPosition() {
+      const panel = this.panelEl;
+      if (!panel) return;
+      const w = panel.offsetWidth || 414;
+      const h = Math.min(panel.offsetHeight || 620, 620);
+      const saved = this.state.settings.panelPos;
+      // 默认贴在站点提示词栏左侧，避免挡住正向提示词输入框
+      let x = saved && Number.isFinite(saved.x) ? saved.x : window.innerWidth - w - 448;
+      let y = saved && Number.isFinite(saved.y) ? saved.y : 16;
+      x = Math.min(Math.max(8, x), Math.max(8, window.innerWidth - w - 8));
+      y = Math.min(Math.max(8, y), Math.max(8, window.innerHeight - h - 8));
+      panel.style.left = x + 'px';
+      panel.style.top = y + 'px';
+    }
+
+    bindDrag(head) {
+      head.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+        if (e.target.closest('button')) return;
+        const panel = this.panelEl;
+        if (!panel) return;
+        const rect = panel.getBoundingClientRect();
+        const dx = e.clientX - rect.left;
+        const dy = e.clientY - rect.top;
+        head.classList.add('is-dragging');
+        const move = (ev) => {
+          const w = panel.offsetWidth;
+          const h = panel.offsetHeight;
+          const x = Math.min(Math.max(8, ev.clientX - dx), Math.max(8, window.innerWidth - w - 8));
+          const y = Math.min(Math.max(8, ev.clientY - dy), Math.max(8, window.innerHeight - Math.min(h, 620) - 8));
+          panel.style.left = x + 'px';
+          panel.style.top = y + 'px';
+        };
+        const up = () => {
+          head.classList.remove('is-dragging');
+          window.removeEventListener('pointermove', move);
+          window.removeEventListener('pointerup', up);
+          const r = panel.getBoundingClientRect();
+          Store.patchSettings({ panelPos: { x: Math.round(r.left), y: Math.round(r.top) } }).catch(() => {});
+        };
+        window.addEventListener('pointermove', move);
+        window.addEventListener('pointerup', up);
+        e.preventDefault();
+      });
+      head.addEventListener('dblclick', () => {
+        Store.patchSettings({ panelPos: null }).catch(() => {});
+        this.state.settings.panelPos = null;
+        this.applyPanelPosition();
+      });
     }
 
     applyOpen() {
@@ -484,7 +539,7 @@
     }
 
     buildHead() {
-      return h('div', { class: 'is-head' }, [
+      const head = h('div', { class: 'is-head', title: '按住可拖动，双击复位' }, [
         h('div', { class: 'is-logo' }, [icon('sparkles', 17)]),
         h('div', { class: 'is-brand' }, [
           h('div', { class: 'is-title', text: 'IdleCloud 提示词工坊' }),
@@ -517,6 +572,8 @@
           })
         ])
       ]);
+      this.bindDrag(head);
+      return head;
     }
 
     buildTabs() {
