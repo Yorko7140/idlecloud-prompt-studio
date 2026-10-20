@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fixture · IdleCloud Prompt Studio</title>
+    <style>
+      body { margin: 0; font: 14px/1.5 system-ui, sans-serif; background: #11151d; color: #e6ebf5; }
+      .app { display: grid; grid-template-columns: 1fr 380px; height: 100vh; }
+      .left { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+      .right { border-left: 1px solid #2a3140; padding: 16px; overflow: auto; }
+      .tabs { display: flex; gap: 4px; margin-bottom: 6px; }
+      .tabs [role='tab'] { background: #1c2230; border: 1px solid #2a3140; color: #9aa6ba; padding: 5px 12px; border-radius: 6px; cursor: pointer; }
+      .tabs [role='tab'][aria-selected='true'] { background: #2a3a63; color: #fff; }
+      .prompt-editor-input textarea { width: 100%; min-height: 120px; background: #0d1118; color: #e6ebf5; border: 1px solid #2a3140; border-radius: 8px; padding: 8px; }
+      .character { border: 1px solid #2a3140; border-radius: 10px; margin-bottom: 10px; }
+      .character[aria-expanded='false'] .char-body { display: none; }
+      .char-head { display: flex; justify-content: space-between; padding: 8px 10px; }
+      .char-body { padding: 0 10px 10px; display: flex; flex-direction: column; gap: 6px; }
+      .MuiFormControl-root { display: flex; flex-direction: column; gap: 4px; }
+      .MuiFormControl-root label { font-size: 12px; color: #9aa6ba; }
+      .MuiFormControl-root textarea { width: 100%; min-height: 70px; background: #0d1118; color: #e6ebf5; border: 1px solid #2a3140; border-radius: 8px; padding: 8px; }
+      button.plain { background: #2a3a63; color: #fff; border: 0; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+      .hint { color: #7b8698; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <div class="left">
+        <div class="hint">模拟 IdleCloud 绘图页结构（.prompt-editor-input + role=tab + MUI TextField 角色框）</div>
+        <section id="prompt-panel">
+          <div class="tabs" role="tablist" aria-label="prompt tabs">
+            <button role="tab" aria-selected="true" data-kind="positive" id="tab-positive">Positive Prompt</button>
+            <button role="tab" aria-selected="false" data-kind="negative" id="tab-negative">Negative Prompt</button>
+          </div>
+          <div class="prompt-editor-input" data-kind="positive">
+            <textarea id="prompt-positive" placeholder="Positive prompt"></textarea>
+            <div class="prompt-editor-actions"></div>
+          </div>
+          <div class="prompt-editor-input" data-kind="negative" style="display: none">
+            <textarea id="prompt-negative" placeholder="Negative prompt"></textarea>
+            <div class="prompt-editor-actions"></div>
+          </div>
+        </section>
+      </div>
+      <div class="right" id="parameters">
+        <div class="hint">参数 · 角色</div>
+        <button class="plain" id="add-character">Add Character</button>
+        <div id="characters" style="margin-top: 10px"></div>
+      </div>
+    </div>
+
+    <script>
+      // 模拟站点的受控 React 组件：tab 切换重新渲染（未选中面板 display:none）
+      const state = { positive: '', negative: '' };
+      document.querySelectorAll('#prompt-panel [role="tab"]').forEach((tab) => {
+        tab.addEventListener('click', () => {
+          const kind = tab.dataset.kind;
+          document.querySelectorAll('#prompt-panel [role="tab"]').forEach((t) => {
+            t.setAttribute('aria-selected', String(t === tab));
+          });
+          document.querySelectorAll('#prompt-panel .prompt-editor-input').forEach((p) => {
+            p.style.display = p.dataset.kind === kind ? '' : 'none';
+          });
+        });
+      });
+      const pos = document.getElementById('prompt-positive');
+      const neg = document.getElementById('prompt-negative');
+      pos.addEventListener('input', (e) => (state.positive = e.target.value));
+      neg.addEventListener('input', (e) => (state.negative = e.target.value));
+
+      // 角色：单 textarea，tab 切换显示 prompt / avoid 两份内容（与站点一致）
+      let seq = 0;
+      function addCharacter() {
+        seq += 1;
+        const name = 'Character ' + seq;
+        const data = { prompt: '', avoid: '' };
+        data.tab = 'prompt';
+        const wrap = document.createElement('div');
+        wrap.className = 'character';
+        wrap.setAttribute('aria-expanded', 'true');
+        wrap.innerHTML = `
+          <div class="char-head">
+            <span>${name}</span>
+            <button class="plain" aria-label="collapse character">–</button>
+          </div>
+          <div class="char-body">
+            <div class="tabs" role="tablist">
+              <button role="tab" aria-selected="true" data-t="prompt">Character Prompt</button>
+              <button role="tab" aria-selected="false" data-t="avoid">Character Avoid</button>
+            </div>
+            <div class="MuiFormControl-root">
+              <label>${name}</label>
+              <textarea data-role="char"></textarea>
+            </div>
+          </div>`;
+        const ta = wrap.querySelector('textarea');
+        const tabs = wrap.querySelectorAll('[role="tab"]');
+        const sync = () => {
+          ta.value = data[data.tab];
+        };
+        tabs.forEach((tab) => {
+          tab.addEventListener('click', () => {
+            data[data.tab] = ta.value;
+            data.tab = tab.dataset.t;
+            tabs.forEach((t) => t.setAttribute('aria-selected', String(t === tab)));
+            sync();
+          });
+        });
+        ta.addEventListener('input', () => {
+          data[data.tab] = ta.value;
+        });
+        wrap.querySelector('.char-head button').addEventListener('click', () => {
+          wrap.setAttribute('aria-expanded', wrap.getAttribute('aria-expanded') === 'true' ? 'false' : 'true');
+        });
+        document.getElementById('characters').appendChild(wrap);
+      }
+      document.getElementById('add-character').addEventListener('click', addCharacter);
+      addCharacter();
+
+      window.__fixture = { state, addCharacter };
+    </script>
+  </body>
+</html>

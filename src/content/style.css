@@ -1,0 +1,10 @@
+/* 页面级补充样式（面板本体在 Shadow DOM 内，自带样式） */
+#idlecloud-prompt-studio-host {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+}
+#idlecloud-prompt-studio-host * {
+  pointer-events: auto;
+}

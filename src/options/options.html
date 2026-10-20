@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>IdleCloud 提示词工坊 · 数据管理</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo">IC</span>
+        <div>
+          <h1>IdleCloud 提示词工坊</h1>
+          <p>画师串 / 角色串库与设计器数据管理</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button id="open-draw" class="btn ghost">打开绘图页</button>
+        <button id="export" class="btn ghost">导出备份</button>
+        <button id="import" class="btn ghost">导入备份</button>
+        <button id="import-toml" class="btn ghost">从 MaiBot 导入 TOML</button>
+        <input id="file" type="file" accept=".json,application/json" hidden />
+        <input id="toml-file" type="file" accept=".toml,text/plain" multiple hidden />
+      </div>
+    </header>
+
+    <main>
+      <section class="card">
+        <div class="card-head">
+          <h2>画师串 <span id="artist-count" class="count">0</span></h2>
+          <div class="row">
+            <input id="artist-search" class="input" placeholder="搜索画师 / 标签 / 备注" />
+            <button id="artist-add" class="btn primary">新增画师串</button>
+          </div>
+        </div>
+        <div id="artist-list" class="library"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>角色串 <span id="char-count" class="count">0</span></h2>
+          <div class="row">
+            <input id="char-search" class="input" placeholder="搜索角色 / 标签 / 备注" />
+            <button id="char-add" class="btn primary">新增角色串</button>
+          </div>
+        </div>
+        <div id="char-list" class="library"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2>设计器设置</h2></div>
+        <div class="settings-grid">
+          <label>填入模式
+            <select id="fill-mode" class="input">
+              <option value="append">追加（自动去重）</option>
+              <option value="replace">覆盖</option>
+            </select>
+          </label>
+          <label>分隔符
+            <input id="separator" class="input" placeholder=", " />
+          </label>
+          <label>目标模型
+            <select id="designer-model" class="input">
+              <option value="v4.5">V4 / V4.5</option>
+              <option value="v5">V5</option>
+            </select>
+          </label>
+          <label class="check"><input id="auto-quality" type="checkbox" /> 自动追加质量词</label>
+        </div>
+        <div class="settings-grid">
+          <label>LLM Base URL
+            <input id="llm-base" class="input" placeholder="https://api.openai.com/v1" />
+          </label>
+          <label>LLM 模型
+            <input id="llm-model" class="input" placeholder="gpt-4o-mini" />
+          </label>
+          <label>LLM API Key
+            <input id="llm-key" class="input" type="password" placeholder="sk-..." />
+          </label>
+        </div>
+        <div class="row end">
+          <span id="save-hint" class="hint"></span>
+          <button id="save" class="btn primary">保存设置</button>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="editor">
+      <form method="dialog" class="editor-form">
+        <h3 id="editor-title">编辑</h3>
+        <label>名称 <input id="f-name" class="input" /></label>
+        <label>分类 <input id="f-group" class="input" placeholder="例如：油画 / 赛博 / 我的 OC" /></label>
+        <label>标签（逗号分隔） <input id="f-tags" class="input" /></label>
+        <label>正向串 <textarea id="f-prompt" class="input" rows="4"></textarea></label>
+        <label id="f-avoid-wrap">负面 / Avoid 串 <textarea id="f-avoid" class="input" rows="2"></textarea></label>
+        <label>备注 <textarea id="f-note" class="input" rows="2"></textarea></label>
+        <div class="row end">
+          <button value="cancel" class="btn ghost" formnovalidate>取消</button>
+          <button id="editor-save" value="save" class="btn primary">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="../shared/store.js"></script>
+    <script src="../shared/toml.js"></script>
+    <script src="options.js"></script>
+  </body>
+</html>
